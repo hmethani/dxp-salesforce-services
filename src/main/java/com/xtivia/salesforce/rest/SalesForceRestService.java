@@ -22,6 +22,7 @@ import com.xtivia.salesforce.singleton.SearchLeadsService;
  * A sample application to demonstrate implementing a JAX-RS endpoint in DXP
  */
 @Component(immediate=true, property={"jaxrs.application=true"}, service=Application.class)
+@ApplicationPath("salesforce")
 public class SalesForceRestService extends Application {
 	
 	/*

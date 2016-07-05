@@ -4,6 +4,7 @@ package com.xtivia.salesforce.singleton;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
+import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.ResponseBuilder;
 
@@ -13,14 +14,14 @@ import com.xtivia.salesforce.model.SearchCriteria;
 import com.xtivia.salesforce.util.LeadSearchUtil;
 import com.xtivia.salesforce.util.LeadsUtil;
 
-@Path("/leads/search")
+@Path("/leads")
 public class SearchLeadsService {
 
     private static final Log log = LogFactoryUtil.getLog(SearchLeadsService.class);
     
     @GET
-    @Path("/{name}/{email}/{company}")
-    public Response searchLeads(@PathParam("name") String name, @PathParam("email") String email, @PathParam("company")String company) throws Exception {
+    @Path("/search")
+    public Response searchLeads(@QueryParam("name") String name, @QueryParam("email") String email, @QueryParam("company")String company) throws Exception {
     	
     	ResponseBuilder builder;
         try {
