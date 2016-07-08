@@ -1,12 +1,17 @@
 package com.xtivia.salesforce.util;
 
+import com.liferay.portal.kernel.log.Log;
+import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.portal.kernel.service.PortletPreferencesLocalServiceUtil;
+import com.liferay.portal.kernel.util.StringPool;
+import com.liferay.portal.kernel.util.Validator;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 import javax.portlet.PortletPreferences;
-import javax.portlet.RenderRequest;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.builder.ToStringBuilder;
@@ -19,28 +24,24 @@ import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.util.EntityUtils;
 import org.codehaus.jackson.map.ObjectMapper;
 
-import com.liferay.portal.kernel.log.Log;
-import com.liferay.portal.kernel.log.LogFactoryUtil;
-
 public class LeadsUtil {
 
-    public static final String SERVICE_URL      = "https://na30.salesforce.com/services/data/v36.0";
-    public static final String CLIENT_ID      = "3MVG9uudbyLbNPZMETXtbyOTPABaFc108Zqj2cjg7rHxOi0w0eT65PJpzk5dXB6C2djgsO2_st.K9SAwcF9Sj";
-    public static final String CLIENT_SECRET  = "120284533777135696";
-    public static final String USERNAME       = "salesforce-portal-devs@xtivia.com";
-    public static final String PASSWORD       = "Passw0rd";
-    public static final String SECURITY_TOKEN = "Vyjv1i26365NP6zoSafPybanS";
+    public static final String SERVICE_URL      = "serviceUrl";
+    public static final String CLIENT_ID      = "clientId";
+    public static final String CLIENT_SECRET  = "clientSecret";
+    public static final String USERNAME       = "username";
+    public static final String PASSWORD       = "password";
+    public static final String SECURITY_TOKEN = "securityToken";
 
     public static final String ACCESS_TOKEN = "access_token";
     public static final String ACCESS_TOKEN_SESSION_KEY = "";
-    public static final String SERVICE_URL_SESSION_KEY = "https://na30.salesforce.com/services/data/v36.0";
+   // public static final String SERVICE_URL_SESSION_KEY = "https://na30.salesforce.com/services/data/v36.0";
 
     public static final String ERROR_MESSAGE = "errorMessage";
     private static final Log log = LogFactoryUtil.getLog(LeadsUtil.class);
     
-    
-    public static String getAccessToken() {
-    	List<NameValuePair> params = grantTokenparamsFromPreferences();
+    public static String getAccessTokenFromPreferences(PortletPreferences preferences) {
+    	List<NameValuePair> params = grantTokenparamsFromPreferences(preferences);
     	String accessToken = null;
 		try {
 			accessToken = fetchAccessToken(params);
@@ -49,9 +50,7 @@ public class LeadsUtil {
 		}
     	return accessToken;
     }
-    
-    private static List<NameValuePair> grantTokenparamsFromPreferences() {
-        /*PortletPreferences preferences = renderRequest.getPreferences();
+    private static List<NameValuePair> grantTokenparamsFromPreferences(PortletPreferences preferences) {
         String clientId = preferences.getValue(LeadsUtil.CLIENT_ID, "");
         String clientSecret = preferences.getValue(LeadsUtil.CLIENT_SECRET, "");
         String username = preferences.getValue(LeadsUtil.USERNAME, "");
@@ -61,19 +60,20 @@ public class LeadsUtil {
         if (StringUtils.isEmpty(clientId) || StringUtils.isEmpty(clientSecret) || StringUtils.isEmpty(username)
                 || StringUtils.isEmpty(password) || StringUtils.isEmpty(securityToken)) {
             throw new IllegalStateException("The required OAuth configuration or credentials have not been configured in the portlet.");
-        } */
+        }
 
         List<NameValuePair> params = new ArrayList<NameValuePair>();
         params.add(new BasicNameValuePair("grant_type", "password"));
-        params.add(new BasicNameValuePair("client_id", CLIENT_ID));
-        params.add(new BasicNameValuePair("client_secret", CLIENT_SECRET));
-        params.add(new BasicNameValuePair("username", USERNAME));
-        params.add(new BasicNameValuePair("password", PASSWORD + SECURITY_TOKEN));
+        params.add(new BasicNameValuePair("client_id", clientId));
+        params.add(new BasicNameValuePair("client_secret", clientSecret));
+        params.add(new BasicNameValuePair("username", username));
+        params.add(new BasicNameValuePair("password", password + securityToken));
         if (log.isDebugEnabled()) {
             log.debug(String.format("Post Params:\n%s", ToStringBuilder.reflectionToString(params)));
         }
         return params;
     }
+    
     
     private static String fetchAccessToken(List<NameValuePair> params) throws IOException {
         if (log.isDebugEnabled()) {
@@ -99,6 +99,15 @@ public class LeadsUtil {
         return accessToken;
     }
     
+    public static PortletPreferences getPreferences(String plid, String portletId) {
+    	List<com.liferay.portal.kernel.model.PortletPreferences> portletPreferences = PortletPreferencesLocalServiceUtil.getPortletPreferences(Long.parseLong(plid), portletId);
+    	PortletPreferences jPreference = null;
+    	if(Validator.isNotNull(portletPreferences) && portletPreferences.size()>0) {
+    		com.liferay.portal.kernel.model.PortletPreferences preference = portletPreferences.get(0);
+    		jPreference  = PortletPreferencesLocalServiceUtil.getPreferences(preference.getCompanyId(), preference.getOwnerId(), preference.getOwnerType(), preference.getPlid(), portletId);
+    	}
+    	return jPreference;
+    }
     /**
      * Understands representing an authentication error returned by SalesForce
      * 

@@ -1,13 +1,21 @@
 package com.xtivia.salesforce.singleton;
 
+import com.liferay.portal.kernel.log.Log;
+import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.portal.kernel.service.LayoutLocalServiceUtil;
+import com.liferay.portal.kernel.util.StringPool;
+import com.xtivia.salesforce.model.Lead;
+import com.xtivia.salesforce.util.LeadsUtil;
+
 import java.io.IOException;
 import java.util.Map;
 
+import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
+import javax.ws.rs.core.Context;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.ResponseBuilder;
 
@@ -21,11 +29,6 @@ import org.codehaus.jackson.JsonParseException;
 import org.codehaus.jackson.map.JsonMappingException;
 import org.codehaus.jackson.map.ObjectMapper;
 
-import com.liferay.portal.kernel.log.Log;
-import com.liferay.portal.kernel.log.LogFactoryUtil;
-import com.xtivia.salesforce.model.Lead;
-import com.xtivia.salesforce.util.LeadsUtil;
-
 @SuppressWarnings({ "unchecked", "rawtypes" })
 @Path("/leads")
 public class LeadDetailsService {
@@ -35,12 +38,13 @@ public class LeadDetailsService {
     @GET
 	@Path("/details")
 	@Produces("application/json")
-    public Response getLeadsDetails(@QueryParam("id") String id) throws Exception {
+    public Response getLeadsDetails(@Context HttpServletRequest httpServletRequest, @QueryParam("id") String id, @QueryParam("plidParam") String plid, @QueryParam("portletIdParam") String portletId) throws Exception {
     	ResponseBuilder builder;
+    	javax.portlet.PortletPreferences jPreferences = LeadsUtil.getPreferences(plid, portletId);
+    	String accessToken = LeadsUtil.getAccessTokenFromPreferences(jPreferences);
         try {
-            String baseUrl = url();
-            String accessToken = LeadsUtil.getAccessToken();
-            //String id = (String) context.get("id");
+            String baseUrl = url(jPreferences.getValue(LeadsUtil.SERVICE_URL, StringPool.BLANK));
+            
             if (log.isDebugEnabled()) {
                 log.debug(String.format("Fetching the details for lead: %s", id));
             }
@@ -72,9 +76,8 @@ public class LeadDetailsService {
         return leadAttrs;
     }
 
-    private String url() {
-        String serviceUrl = LeadsUtil.SERVICE_URL_SESSION_KEY;
-        return String.format("%s/sobjects/Lead/", serviceUrl);
+    private String url(String url) {
+        return String.format("%s/sobjects/Lead/", url);
     }
 
     private Lead leadFrom(Map leadAttr) {
@@ -101,4 +104,6 @@ public class LeadDetailsService {
         lead.setState(address.get("state"));
         lead.setCountry(address.get("country"));
     }
+    
+    
 }
