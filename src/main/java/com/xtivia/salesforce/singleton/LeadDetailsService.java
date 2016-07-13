@@ -2,7 +2,14 @@ package com.xtivia.salesforce.singleton;
 
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.portal.kernel.model.User;
+import com.liferay.portal.kernel.security.auth.PrincipalThreadLocal;
+import com.liferay.portal.kernel.security.permission.ActionKeys;
+import com.liferay.portal.kernel.security.permission.PermissionChecker;
+import com.liferay.portal.kernel.security.permission.PermissionCheckerFactoryUtil;
 import com.liferay.portal.kernel.service.LayoutLocalServiceUtil;
+import com.liferay.portal.kernel.service.UserLocalServiceUtil;
+import com.liferay.portal.kernel.service.permission.LayoutPermissionUtil;
 import com.liferay.portal.kernel.util.StringPool;
 import com.xtivia.salesforce.model.Lead;
 import com.xtivia.salesforce.util.LeadsUtil;
@@ -40,25 +47,36 @@ public class LeadDetailsService {
 	@Produces("application/json")
     public Response getLeadsDetails(@Context HttpServletRequest httpServletRequest, @QueryParam("id") String id, @QueryParam("plidParam") String plid, @QueryParam("portletIdParam") String portletId) throws Exception {
     	ResponseBuilder builder;
+    	long userId = Long.parseLong(httpServletRequest.getRemoteUser());
+    	PrincipalThreadLocal.setName(userId);
+    	
+    	User user = UserLocalServiceUtil.getUserById(userId);
+    	
+    	PermissionChecker permissionChecker = PermissionCheckerFactoryUtil.create(user);
+    	boolean hasPermission = LayoutPermissionUtil.contains(permissionChecker, Long.parseLong(plid), ActionKeys.VIEW);
     	javax.portlet.PortletPreferences jPreferences = LeadsUtil.getPreferences(plid, portletId);
     	String accessToken = LeadsUtil.getAccessTokenFromPreferences(jPreferences);
-        try {
-            String baseUrl = url(jPreferences.getValue(LeadsUtil.SERVICE_URL, StringPool.BLANK));
-            
-            if (log.isDebugEnabled()) {
-                log.debug(String.format("Fetching the details for lead: %s", id));
-            }
-            String body = getContent(String.format("%s%s", baseUrl, id), accessToken);
-            if (log.isDebugEnabled()) {
-                log.debug(String.format("SalesForce Search URL: %s\nResponse from SalesForce: %s", String.format("%s%s", baseUrl, id), body));
-            }
-            builder = Response.ok(leadFrom(responseAttrs(body)));
-        } catch (Exception e) {
-            log.error("There was an error while searching for leads.", e);
-            builder = Response.serverError().entity("Failed to fetch the leads object.");
-        }
-        return builder.build();
-    }
+    	if(hasPermission) {
+	        try {
+	            String baseUrl = url(jPreferences.getValue(LeadsUtil.SERVICE_URL, StringPool.BLANK));
+	            
+	            if (log.isDebugEnabled()) {
+	                log.debug(String.format("Fetching the details for lead: %s", id));
+	            }
+	            String body = getContent(String.format("%s%s", baseUrl, id), accessToken);
+	            if (log.isDebugEnabled()) {
+	                log.debug(String.format("SalesForce Search URL: %s\nResponse from SalesForce: %s", String.format("%s%s", baseUrl, id), body));
+	            }
+	            builder = Response.ok(leadFrom(responseAttrs(body)));
+	        } catch (Exception e) {
+	            log.error("There was an error while searching for leads.", e);
+	            builder = Response.serverError().entity("Failed to fetch the leads object.");
+	        }
+	    } else {
+			builder = Response.serverError().entity("You do not have permission to access. Contact admin.");
+		}
+	        return builder.build();
+	    }
 
     private String getContent(String leadUrl, String accessToken) throws IOException, ClientProtocolException {
         RequestBuilder builder = RequestBuilder.get(leadUrl).addHeader(
